@@ -1,0 +1,78 @@
+name: CI/CD - Projeto Vinicius
+
+on:
+  push:
+    branches:
+      - feature/esteira
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements.txt
+
+      - name: Lint
+        run: flake8 app tests
+
+      - name: Tipagem
+        run: mypy app
+
+      - name: Segurança
+        run: bandit -r app
+
+      - name: Complexidade
+        run: radon cc app -nc
+
+      - name: Testes automatizados
+        run: pytest -q
+
+      - name: Gerar artefatos
+        run: python app/pipeline.py
+
+      - name: Publicar artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultado-pipeline
+          path: output/
+
+  deploy:
+    name: deploy
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar artefato aprovado
+        uses: actions/download-artifact@v4
+        with:
+          name: resultado-pipeline
+          path: deploy/resultado
+
+      - name: Promover para produção
+        run: |
+          mkdir -p deploy/production
+          cp -R deploy/resultado/. deploy/production/
+          echo "Artefato aprovado promovido para produção."
+          find deploy/production -type f -print
+
+      - name: Publicar resultado do deploy
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-production
+          path: deploy/production/
