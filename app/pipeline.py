@@ -49,4 +49,3 @@ def create_annual_report(input_file: str, output_file: str) -> None:
 
 if __name__ == "__main__":
     run_pipeline("data/sales.csv", "output/summary.csv")
-    create_annual_report("data/sales.csv", "output/annual_summary.csv")
